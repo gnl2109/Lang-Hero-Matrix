@@ -1,0 +1,5 @@
+{
+  "name": "Polaris Planner - Langrisser Team Simulator",
+  "description": "A web application for Langrisser Mobile players to plan hero compositions for multi-stage PVE content. Select owned heroes, assign them to four battle teams, and share your compositions.",
+  "requestFramePermissions": []
+}
