@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Hero, TeamId } from '../types';
-import { useAppContext } from '../context/AppContext'; // Corrected import
+import { useAppContext } from '../context/AppContext'; 
 
 interface HeroCardProps {
   hero: Hero;
@@ -24,7 +24,17 @@ const HeroCard: React.FC<HeroCardProps> = ({
   sourceTeamId,
   activeTeamBuffs 
 }) => {
-  const { isAppDragging } = useAppContext(); // Get global dragging state
+  const { 
+    isAppDragging, 
+    setTouchDragData, 
+    setTouchOverTeamId, 
+    addHeroToTeam, 
+    moveHeroBetweenTeams,
+    touchDragData, // Need to access current drag data for cleanup
+    setIsTouchActive,
+    isTouchActive,
+  } = useAppContext();
+  const heroCardRef = useRef<HTMLDivElement>(null);
 
   const cardClasses = `
     relative 
@@ -32,19 +42,20 @@ const HeroCard: React.FC<HeroCardProps> = ({
     p-1 w-full h-16 
     flex flex-col items-center justify-start 
     text-center 
+    select-none /* Prevent text selection during drag on mobile */
     ${isSelected ? 'ring-2 ring-sky-500' : 'ring-1 ring-slate-600'}
     ${isDisabled ? 'opacity-50 cursor-not-allowed grayscale filter' : 'cursor-pointer'}
-    ${(!isDisabled && !showRemoveButton && !isAppDragging) ? 'hover:shadow-lg hover:ring-sky-400' : ''} 
-    ${(showRemoveButton) ? 'cursor-grab' : ''}
+    ${(!isDisabled && !showRemoveButton && !isAppDragging && !isTouchActive) ? 'hover:shadow-lg hover:ring-sky-400' : ''} 
+    ${(showRemoveButton || (touchDragData && touchDragData.heroId === hero.id)) ? 'cursor-grabbing' : (showRemoveButton ? 'cursor-grab' : '')}
   `;
 
   const handleClick = () => {
-    if (!isDisabled && onClick) {
+    if (!isDisabled && onClick && !isTouchActive) { // Prevent click during/after touch drag
       onClick();
     }
   };
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragStartNative = (e: React.DragEvent<HTMLDivElement>) => {
     if (isDisabled && !showRemoveButton) {
         e.preventDefault();
         return;
@@ -56,13 +67,74 @@ const HeroCard: React.FC<HeroCardProps> = ({
     }
     try {
         e.dataTransfer.setData('text/plain', hero.id); 
-        e.dataTransfer.setData('heroid', hero.id); 
     } catch (err) {
-        console.warn("Error setting multiple dataTransfer types:", err);
+        console.warn("Error setting dataTransfer type:", err);
     }
   };
   
-  const isDraggable = showRemoveButton || !isDisabled;
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isDisabled && !showRemoveButton) return;
+    if (heroCardRef.current) {
+      setTouchDragData({ heroId: hero.id, sourceTeamId, element: heroCardRef.current });
+      setIsTouchActive(true);
+      heroCardRef.current.style.opacity = '0.7';
+      heroCardRef.current.style.transform = 'scale(1.05)';
+      heroCardRef.current.style.zIndex = '1000'; // Bring to front
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchDragData || touchDragData.heroId !== hero.id) return;
+    e.preventDefault(); 
+    const touch = e.touches[0];
+    const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    let currentlyOverTeamId: TeamId | null = null;
+    if (targetElement) {
+      const battleTeamSlotElement = targetElement.closest('[data-team-id]');
+      if (battleTeamSlotElement) {
+        currentlyOverTeamId = battleTeamSlotElement.getAttribute('data-team-id') as TeamId;
+      }
+    }
+    setTouchOverTeamId(currentlyOverTeamId);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchDragData || touchDragData.heroId !== hero.id) {
+       // If touch ends for a card not being actively touch-dragged by this instance, clear global touch state.
+       // This can happen if another touch operation was interrupted.
+       if (isTouchActive) {
+          setIsTouchActive(false);
+          setTouchOverTeamId(null);
+          setTouchDragData(null); 
+       }
+       return;
+    }
+
+    const currentDropTargetTeamId = useAppContext().touchOverTeamId; // Get latest from context
+
+    if (heroCardRef.current) {
+      heroCardRef.current.style.opacity = '1';
+      heroCardRef.current.style.transform = 'scale(1)';
+      heroCardRef.current.style.zIndex = 'auto';
+    }
+
+    if (currentDropTargetTeamId) {
+      const { heroId: draggedHeroId, sourceTeamId: dragSourceTeamId } = touchDragData;
+      if (dragSourceTeamId && dragSourceTeamId !== currentDropTargetTeamId) {
+        moveHeroBetweenTeams(draggedHeroId, dragSourceTeamId, currentDropTargetTeamId);
+      } else if (!dragSourceTeamId) {
+        addHeroToTeam(draggedHeroId, currentDropTargetTeamId);
+      }
+    }
+    
+    setTouchDragData(null);
+    setTouchOverTeamId(null);
+    setIsTouchActive(false); // Reset global touch active flag
+  };
+
+
+  const isDraggableNative = showRemoveButton || !isDisabled; // For HTML D&D
 
   const rawFactions = [hero.faction1, hero.faction2, hero.faction3]
     .filter(Boolean)
@@ -71,6 +143,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
 
   return (
     <div 
+      ref={heroCardRef}
       className={cardClasses} 
       onClick={handleClick} 
       title={cardTitle}
@@ -78,8 +151,12 @@ const HeroCard: React.FC<HeroCardProps> = ({
       tabIndex={isDisabled && !showRemoveButton ? -1 : 0} 
       aria-pressed={isSelected} 
       aria-disabled={isDisabled && !showRemoveButton}
-      draggable={isDraggable}
-      onDragStart={handleDragStart}
+      draggable={isDraggableNative}
+      onDragStart={handleDragStartNative}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd} // Treat cancel same as end for cleanup
     >
       <div className="w-full">
         <p className="font-semibold text-xs text-sky-300 truncate w-full px-1">{hero.name}</p>
@@ -119,7 +196,10 @@ const HeroCard: React.FC<HeroCardProps> = ({
             e.stopPropagation(); 
             onRemove();
           }}
-          className="absolute top-0.5 right-0.5 bg-red-500 hover:bg-red-700 text-white text-xxs font-bold p-0.5 rounded-full w-4 h-4 flex items-center justify-center"
+          // For touch, ensure this button doesn't interfere with card drag
+          // It's small, so usually touch focuses on card body.
+          // If it becomes an issue, might need e.preventDefault() on its onTouchStart.
+          className="absolute top-0.5 right-0.5 bg-red-500 hover:bg-red-700 text-white text-xxs font-bold p-0.5 rounded-full w-4 h-4 flex items-center justify-center z-10"
           aria-label={`Remove ${hero.name}`}
         >
           X

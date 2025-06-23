@@ -20,7 +20,8 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
     assignGodToTeam,
     getGodById,
     isLoadingGods,
-    clearTeam, // Added context function
+    clearTeam,
+    touchOverTeamId, // For touch drag visual feedback
   } = useAppContext();
 
   const currentTeamData = teamComposition[teamId];
@@ -32,11 +33,10 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
   const selectedGodId = currentTeamData.godId;
   const selectedGod = selectedGodId ? getGodById(selectedGodId) : null;
 
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [isDragOverNative, setIsDragOverNative] = useState(false); // For native D&D
   const MAX_HEROES_PER_TEAM = 8;
   const isTeamEmpty = heroesInTeam.length === 0 && !selectedGodId;
 
-  // Calculate active faction buffs for this specific team
   const activeTeamBuffs = useMemo(() => {
     const buffs = new Set<string>();
     heroesInTeam.forEach(hero => {
@@ -47,26 +47,27 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
     return buffs;
   }, [heroesInTeam]);
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (e.dataTransfer.types.includes('heroid')) {
+  const handleDragOverNative = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.dataTransfer.types.includes('heroid') || e.dataTransfer.types.includes('text/plain')) { // text/plain for Firefox
         e.preventDefault(); 
         e.dataTransfer.dropEffect = 'move'; 
-        setIsDragOver(true); 
+        setIsDragOverNative(true); 
     } else {
-        if (isDragOver) { 
-          setIsDragOver(false);
+        if (isDragOverNative) { 
+          setIsDragOverNative(false);
         }
     }
   };
 
-  const handleDragLeave = () => {
-    setIsDragOver(false);
+  const handleDragLeaveNative = () => {
+    setIsDragOverNative(false);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDropNative = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault(); 
-    setIsDragOver(false);
-    const heroId = e.dataTransfer.getData('heroId');
+    setIsDragOverNative(false);
+    // Prefer heroId, fallback to text/plain for broader compatibility (e.g. Firefox)
+    const heroId = e.dataTransfer.getData('heroId') || e.dataTransfer.getData('text/plain');
     const sourceTeamId = e.dataTransfer.getData('sourceTeamId') as TeamId | undefined; 
 
     if (heroId) {
@@ -75,7 +76,7 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
         if (!success) {
           console.warn(`Failed to move hero ${heroId} from ${sourceTeamId} to ${teamId}.`);
         }
-      } else if (!sourceTeamId) {
+      } else if (!sourceTeamId) { // Dragged from hero pool
         const success = addHeroToTeam(heroId, teamId);
         if (!success) {
           console.warn("Failed to add hero:", heroId, "to team:", teamId);
@@ -90,22 +91,24 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
   };
 
   const handleClearTeam = () => {
-    // window.confirm removed for direct action
     clearTeam(teamId);
   };
+
+  const isVisuallyDragOver = isDragOverNative || (touchOverTeamId === teamId);
 
   const slotClasses = `
     bg-slate-800 p-4 rounded-lg shadow-xl flex-1 min-w-[280px] flex flex-col
     transition-all duration-150 ease-in-out
-    ${isDragOver ? 'ring-2 ring-sky-500 scale-105 bg-slate-700' : 'ring-1 ring-slate-700'}
+    ${isVisuallyDragOver ? 'ring-2 ring-sky-500 scale-105 bg-slate-700' : 'ring-1 ring-slate-700'}
   `;
 
   return (
     <div 
       className={slotClasses}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDragOver={handleDragOverNative}
+      onDragLeave={handleDragLeaveNative}
+      onDrop={handleDropNative}
+      data-team-id={teamId} // For identification during touch drag
     >
       <h3 className="text-xl font-bold text-sky-400 mb-1 border-b-2 border-slate-700 pb-2">{TEAM_NAMES[teamId]} ({heroesInTeam.length}/{MAX_HEROES_PER_TEAM})</h3>
       
@@ -150,7 +153,7 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
                 onRemove={() => removeHeroFromTeam(hero.id, teamId)}
                 showRemoveButton={true}
                 sourceTeamId={teamId}
-                activeTeamBuffs={activeTeamBuffs} // Pass active buffs to HeroCard
+                activeTeamBuffs={activeTeamBuffs} 
               />
             </div>
           ))}
