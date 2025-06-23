@@ -46,7 +46,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
   const cardClasses = `
     relative 
     bg-slate-700 rounded-md overflow-hidden shadow-md transition-all duration-200 ease-in-out
-    p-1 w-full h-16 
+    p-1 w-full h-20 /* Increased height from h-16 to h-20 */
     flex flex-col items-center justify-start 
     text-center 
     select-none /* Prevent text selection during drag on mobile */
