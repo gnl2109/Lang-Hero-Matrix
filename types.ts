@@ -44,6 +44,12 @@ export interface SavedCompositionItem {
   data: SavedCompositionState;
 }
 
+export interface TouchDragDataType {
+  heroId: string;
+  sourceTeamId?: TeamId;
+  element: HTMLElement;
+}
+
 export interface AppContextType {
   allHeroes: Hero[];
   isLoadingHeroes: boolean;
@@ -65,11 +71,19 @@ export interface AppContextType {
   isRosterSetupComplete: boolean;
   completeRosterSetup: () => void;
   resetRosterAndTeams: () => void;
-  isAppDragging: boolean;
+  isAppDragging: boolean; // For native HTML D&D
 
   // Save/Load Compositions
   savedCompositions: SavedCompositionItem[];
   saveCurrentComposition: (name: string) => void;
   loadComposition: (compositionId: string) => void;
   deleteSavedComposition: (compositionId: string) => void;
+
+  // Touch Drag State
+  touchDragData: TouchDragDataType | null;
+  setTouchDragData: (data: TouchDragDataType | null) => void;
+  touchOverTeamId: TeamId | null;
+  setTouchOverTeamId: (teamId: TeamId | null) => void;
+  isTouchActive: boolean;
+  setIsTouchActive: (isActive: boolean) => void;
 }
