@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Hero, TeamId } from '../types';
 import { useAppContext } from '../context/AppContext'; 
 
@@ -45,6 +45,9 @@ const HeroCard: React.FC<HeroCardProps> = ({
   const touchStartCoordsRef = useRef<{ x: number; y: number } | null>(null);
   const dragStylesAppliedRef = useRef(false);
   const scrollIntervalRef = useRef<number | null>(null);
+  // Ref to store the ID of the hero this card instance is managing for document events
+  const activeDragHeroIdRef = useRef<string | null>(null);
+
 
   const cardClasses = `
     relative 
@@ -61,7 +64,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
   `;
 
   const handleClick = () => {
-    if (isDisabled || !onClick) return;
+    if (isDisabled || !onClick || isDraggingRef.current) return; // Prevent click if it was a drag
     onClick();
   };
 
@@ -82,50 +85,50 @@ const HeroCard: React.FC<HeroCardProps> = ({
     }
   };
 
-  const clearScrollInterval = () => {
+  const clearScrollInterval = useCallback(() => {
     if (scrollIntervalRef.current) {
       clearInterval(scrollIntervalRef.current);
       scrollIntervalRef.current = null;
     }
-  };
+  }, []);
   
-  const manageAutoScroll = (clientY: number) => {
-    clearScrollInterval(); // Clear any existing interval
+  const manageAutoScroll = useCallback((clientY: number) => {
+    clearScrollInterval(); 
 
     if (clientY < SCROLL_ZONE) {
       scrollIntervalRef.current = window.setInterval(() => {
         window.scrollBy(0, -SCROLL_SPEED);
-      }, 16); // Approx 60 FPS
+      }, 16); 
     } else if (clientY > window.innerHeight - SCROLL_ZONE) {
       scrollIntervalRef.current = window.setInterval(() => {
         window.scrollBy(0, SCROLL_SPEED);
       }, 16);
     }
-  };
+  }, [clearScrollInterval]);
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (isDisabled && !showRemoveButton) return;
-
-    clearScrollInterval(); // Clear scroll interval on new touch start
-
-    isDraggingRef.current = false;
-    dragStylesAppliedRef.current = false;
-    if (e.touches.length > 0) {
-        touchStartCoordsRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else {
-        touchStartCoordsRef.current = null;
+  const applyDragStyles = useCallback(() => {
+    if (heroCardRef.current && !dragStylesAppliedRef.current) {
+      heroCardRef.current.style.opacity = '0.7';
+      heroCardRef.current.style.transform = 'scale(1.05)';
+      heroCardRef.current.style.zIndex = '1000';
+      dragStylesAppliedRef.current = true;
     }
+  }, []);
 
-    if (heroCardRef.current) {
-        setTouchDragData({ heroId: hero.id, sourceTeamId, element: heroCardRef.current });
+  const resetDragStyles = useCallback(() => {
+    if (heroCardRef.current && dragStylesAppliedRef.current) {
+      heroCardRef.current.style.opacity = '1';
+      heroCardRef.current.style.transform = 'scale(1)';
+      heroCardRef.current.style.zIndex = 'auto';
+      dragStylesAppliedRef.current = false;
     }
-    setIsTouchActive(true);
-  };
+  }, []);
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!contextTouchDragData || contextTouchDragData.heroId !== hero.id || !touchStartCoordsRef.current || e.touches.length === 0) return;
+
+  const handleDocumentTouchMove = useCallback((event: TouchEvent) => {
+    if (!activeDragHeroIdRef.current || !touchStartCoordsRef.current || event.touches.length === 0) return;
     
-    const touch = e.touches[0];
+    const touch = event.touches[0];
     const deltaX = Math.abs(touch.clientX - touchStartCoordsRef.current.x);
     const deltaY = Math.abs(touch.clientY - touchStartCoordsRef.current.y);
 
@@ -134,27 +137,16 @@ const HeroCard: React.FC<HeroCardProps> = ({
     }
 
     if (isDraggingRef.current) {
-      e.preventDefault(); 
+      event.preventDefault(); 
+      applyDragStyles();
+      manageAutoScroll(touch.clientY);
 
-      if (!dragStylesAppliedRef.current && heroCardRef.current) {
-        heroCardRef.current.style.opacity = '0.7';
-        heroCardRef.current.style.transform = 'scale(1.05)';
-        heroCardRef.current.style.zIndex = '1000';
-        dragStylesAppliedRef.current = true;
-      }
-
-      manageAutoScroll(touch.clientY); // Manage auto-scrolling
-
-      // Temporarily hide the dragged element so elementFromPoint sees what's under it
       let originalPointerEvents: string | undefined;
       if (heroCardRef.current && dragStylesAppliedRef.current) {
           originalPointerEvents = heroCardRef.current.style.pointerEvents;
           heroCardRef.current.style.pointerEvents = 'none';
       }
-
       const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-
-      // Restore pointer events
       if (heroCardRef.current && dragStylesAppliedRef.current) {
           heroCardRef.current.style.pointerEvents = originalPointerEvents || '';
       }
@@ -166,55 +158,85 @@ const HeroCard: React.FC<HeroCardProps> = ({
           currentlyOverTeamId = battleTeamSlotElement.getAttribute('data-team-id') as TeamId;
         }
       }
+      // Only update context if the over team ID actually changes
       if (contextTouchOverTeamId !== currentlyOverTeamId) {
-        setTouchOverTeamId(currentlyOverTeamId);
+         setTouchOverTeamId(currentlyOverTeamId);
       }
     }
-  };
+  }, [applyDragStyles, manageAutoScroll, setTouchOverTeamId, contextTouchOverTeamId]); 
 
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    clearScrollInterval(); // Stop auto-scroll on touch end
+  const handleDocumentTouchEnd = useCallback((event: TouchEvent) => {
+    document.removeEventListener('touchmove', handleDocumentTouchMove);
+    document.removeEventListener('touchend', handleDocumentTouchEnd);
 
-    if (!contextTouchDragData || contextTouchDragData.heroId !== hero.id) {
-       if (dragStylesAppliedRef.current && heroCardRef.current) {
-          heroCardRef.current.style.opacity = '1';
-          heroCardRef.current.style.transform = 'scale(1)';
-          heroCardRef.current.style.zIndex = 'auto';
-       }
-       if (isTouchActive && !contextTouchDragData) {
-           setIsTouchActive(false);
-       }
-       isDraggingRef.current = false;
-       dragStylesAppliedRef.current = false;
-       touchStartCoordsRef.current = null;
-       return;
-    }
+    clearScrollInterval();
+    resetDragStyles();
 
-    if (dragStylesAppliedRef.current && heroCardRef.current) {
-      heroCardRef.current.style.opacity = '1';
-      heroCardRef.current.style.transform = 'scale(1)';
-      heroCardRef.current.style.zIndex = 'auto';
-      dragStylesAppliedRef.current = false;
-    }
-
-    if (isDraggingRef.current) { 
-      const currentDropTargetTeamId = contextTouchOverTeamId; 
-      if (currentDropTargetTeamId) {
-        const { heroId: draggedHeroId, sourceTeamId: dragSourceTeamId } = contextTouchDragData;
-        if (dragSourceTeamId && dragSourceTeamId !== currentDropTargetTeamId) {
-          moveHeroBetweenTeams(draggedHeroId, dragSourceTeamId, currentDropTargetTeamId);
-        } else if (!dragSourceTeamId) {
-          addHeroToTeam(draggedHeroId, currentDropTargetTeamId);
+    if (activeDragHeroIdRef.current && contextTouchDragData && activeDragHeroIdRef.current === contextTouchDragData.heroId) {
+      if (isDraggingRef.current) { 
+        const currentDropTargetTeamId = contextTouchOverTeamId; 
+        if (currentDropTargetTeamId) {
+          const { heroId: draggedHeroId, sourceTeamId: dragSourceTeamId } = contextTouchDragData;
+          if (dragSourceTeamId && dragSourceTeamId !== currentDropTargetTeamId) {
+            moveHeroBetweenTeams(draggedHeroId, dragSourceTeamId, currentDropTargetTeamId);
+          } else if (!dragSourceTeamId) {
+            addHeroToTeam(draggedHeroId, currentDropTargetTeamId);
+          }
         }
+      } else {
+         // This was a tap, not a drag. The onClick handler will manage this.
+         // However, ensure isTouchActive is reset if no drag occurred.
+          if (onClick && !isDisabled) {
+             // Let original onClick on the div handle the tap
+          }
       }
-    } 
+    }
     
     setTouchDragData(null);
     setTouchOverTeamId(null);
     setIsTouchActive(false); 
     isDraggingRef.current = false;
     touchStartCoordsRef.current = null;
+    activeDragHeroIdRef.current = null;
+
+  }, [clearScrollInterval, resetDragStyles, contextTouchDragData, contextTouchOverTeamId, moveHeroBetweenTeams, addHeroToTeam, setTouchDragData, setTouchOverTeamId, setIsTouchActive, onClick, isDisabled, handleDocumentTouchMove]);
+
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if ((isDisabled && !showRemoveButton) || e.touches.length === 0) return;
+
+    clearScrollInterval(); 
+    isDraggingRef.current = false; // Reset drag status for this touch sequence
+    dragStylesAppliedRef.current = false; // Reset style status
+    
+    touchStartCoordsRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    activeDragHeroIdRef.current = hero.id; // Mark this hero as being actively considered for drag
+
+    if (heroCardRef.current) {
+        setTouchDragData({ heroId: hero.id, sourceTeamId, element: heroCardRef.current });
+    }
+    setIsTouchActive(true);
+
+    document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+    document.addEventListener('touchend', handleDocumentTouchEnd, { once: true });
   };
+
+  useEffect(() => {
+    // Cleanup document event listeners if component unmounts during a drag
+    return () => {
+      if (activeDragHeroIdRef.current) { // Check if this instance was dragging
+        document.removeEventListener('touchmove', handleDocumentTouchMove);
+        document.removeEventListener('touchend', handleDocumentTouchEnd);
+        clearScrollInterval();
+        // Reset relevant context state if this card was the one being dragged
+        if (contextTouchDragData && contextTouchDragData.heroId === activeDragHeroIdRef.current) {
+            setTouchDragData(null);
+            setTouchOverTeamId(null);
+            setIsTouchActive(false);
+        }
+      }
+    };
+  }, [handleDocumentTouchMove, handleDocumentTouchEnd, clearScrollInterval, contextTouchDragData, setTouchDragData, setTouchOverTeamId, setIsTouchActive]);
 
 
   const isDraggableNative = showRemoveButton || !isDisabled; 
@@ -228,7 +250,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
     <div 
       ref={heroCardRef}
       className={cardClasses} 
-      onClick={handleClick}
+      onClick={handleClick} // Modified to not fire if drag occurred
       title={cardTitle}
       role="button" 
       tabIndex={isDisabled && !showRemoveButton ? -1 : 0} 
@@ -237,9 +259,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
       draggable={isDraggableNative}
       onDragStart={handleDragStartNative}
       onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd} 
+      // onTouchMove, onTouchEnd, onTouchCancel are removed from here as they are handled by document listeners now
     >
       <div className="w-full">
         <p className="font-semibold text-xs text-sky-300 truncate w-full px-1">{hero.name}</p>
