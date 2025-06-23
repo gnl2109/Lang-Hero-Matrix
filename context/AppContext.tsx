@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { Hero, God, TeamComposition, AppContextType, TeamId, SharedPayload, SavedCompositionItem, SavedCompositionState, TouchDragDataType } from '../types';
+import { Hero, God, TeamComposition, AppContextType, TeamId, SharedPayload, SavedCompositionItem, SavedCompositionState } from '../types';
 import { fetchHeroes as fetchHeroesService } from '../services/heroService';
 import { fetchGods as fetchGodsService } from '../services/godService';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -12,13 +12,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isLoadingHeroes, setIsLoadingHeroes] = useState(true);
   const [allGods, setAllGods] = useState<God[]>([]);
   const [isLoadingGods, setIsLoadingGods] = useState(true);
-  const [isAppDragging, setIsAppDragging] = useState(false); // For native D&D
-
-  // Touch drag state
-  const [touchDragData, setTouchDragData] = useState<TouchDragDataType | null>(null);
-  const [touchOverTeamId, setTouchOverTeamId] = useState<TeamId | null>(null);
-  const [isTouchActive, setIsTouchActive] = useState(false);
-
+  const [isAppDragging, setIsAppDragging] = useState(false);
 
   const [storedOwnedHeroIds, setStoredOwnedHeroIds] = useLocalStorage<string[]>(LOCAL_STORAGE_OWNED_HEROES_KEY, []);
   const [ownedHeroIds, setOwnedHeroIds] = useState(new Set(storedOwnedHeroIds));
@@ -65,7 +59,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     document.addEventListener('dragstart', handleGlobalDragStart);
     document.addEventListener('dragend', handleGlobalDragEnd);
-    document.addEventListener('drop', handleGlobalDragEnd); // Also clear on drop
+    document.addEventListener('drop', handleGlobalDragEnd);
 
     return () => {
       document.removeEventListener('dragstart', handleGlobalDragStart);
@@ -201,12 +195,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setOwnedHeroIds(new Set());
     setTeamComposition(initialTeamComposition);
     setIsRosterSetupComplete(false);
+    // localStorage.removeItem(LOCAL_STORAGE_OWNED_HEROES_KEY); // useLocalStorage handles this
+    // localStorage.removeItem(LOCAL_STORAGE_ROSTER_SETUP_COMPLETE_KEY); // useLocalStorage handles this
   }, [setIsRosterSetupComplete, initialTeamComposition]);
 
   const saveCurrentComposition = useCallback((name: string) => {
     const currentOwnedIds = Array.from(ownedHeroIds);
     const compositionToSave: SavedCompositionState = {
-      teamComposition: JSON.parse(JSON.stringify(teamComposition)), 
+      teamComposition: JSON.parse(JSON.stringify(teamComposition)), // Deep copy
       ownedHeroIds: currentOwnedIds,
     };
     const newSavedItem: SavedCompositionItem = {
@@ -223,7 +219,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (itemToLoad) {
       setTeamComposition(itemToLoad.data.teamComposition);
       setOwnedHeroIds(new Set(itemToLoad.data.ownedHeroIds));
-      setIsRosterSetupComplete(true); 
+      setIsRosterSetupComplete(true); // Ensure app state reflects loaded roster
     }
   }, [savedCompositions, setTeamComposition, setOwnedHeroIds, setIsRosterSetupComplete]);
 
@@ -258,13 +254,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     saveCurrentComposition,
     loadComposition,
     deleteSavedComposition,
-    // Touch Drag
-    touchDragData,
-    setTouchDragData,
-    touchOverTeamId,
-    setTouchOverTeamId,
-    isTouchActive,
-    setIsTouchActive,
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

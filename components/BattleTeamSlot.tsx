@@ -7,13 +7,19 @@ import { TEAM_NAMES } from '../constants';
 
 interface BattleTeamSlotProps {
   teamId: TeamId;
+  selectedHeroIdsForAssignment: ReadonlySet<string>; // Changed: IDs of heroes selected in pool
+  onAssignSelectedHeroes: (teamId: TeamId) => void; // Changed: Handler to add selected heroes
 }
 
-const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
-  const { 
-    teamComposition, 
-    removeHeroFromTeam, 
-    getHeroById, 
+const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ 
+  teamId, 
+  selectedHeroIdsForAssignment, 
+  onAssignSelectedHeroes 
+}) => {
+  const {
+    teamComposition,
+    removeHeroFromTeam,
+    getHeroById,
     addHeroToTeam,
     moveHeroBetweenTeams,
     allGods,
@@ -21,19 +27,19 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
     getGodById,
     isLoadingGods,
     clearTeam,
-    touchOverTeamId, // For touch drag visual feedback
+    isHeroInAnyTeam,
   } = useAppContext();
 
   const currentTeamData = teamComposition[teamId];
-  const heroesInTeam = useMemo(() => 
+  const heroesInTeam = useMemo(() =>
     currentTeamData.heroes.map(id => getHeroById(id)).filter(Boolean) as Hero[],
     [currentTeamData.heroes, getHeroById]
   );
-  
+
   const selectedGodId = currentTeamData.godId;
   const selectedGod = selectedGodId ? getGodById(selectedGodId) : null;
 
-  const [isDragOverNative, setIsDragOverNative] = useState(false); // For native D&D
+  const [isDragOver, setIsDragOver] = useState(false);
   const MAX_HEROES_PER_TEAM = 8;
   const isTeamEmpty = heroesInTeam.length === 0 && !selectedGodId;
 
@@ -47,39 +53,36 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
     return buffs;
   }, [heroesInTeam]);
 
-  const handleDragOverNative = (e: React.DragEvent<HTMLDivElement>) => {
-    if (e.dataTransfer.types.includes('heroid') || e.dataTransfer.types.includes('text/plain')) { // text/plain for Firefox
-        e.preventDefault(); 
-        e.dataTransfer.dropEffect = 'move'; 
-        setIsDragOverNative(true); 
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.dataTransfer.types.includes('heroid') || e.dataTransfer.types.includes('text/plain')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      setIsDragOver(true);
     } else {
-        if (isDragOverNative) { 
-          setIsDragOverNative(false);
-        }
+      if (isDragOver) {
+        setIsDragOver(false);
+      }
     }
   };
 
-  const handleDragLeaveNative = () => {
-    setIsDragOverNative(false);
+  const handleDragLeave = () => {
+    setIsDragOver(false);
   };
 
-  const handleDropNative = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); 
-    setIsDragOverNative(false);
-    // Prefer heroId, fallback to text/plain for broader compatibility (e.g. Firefox)
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
     const heroId = e.dataTransfer.getData('heroId') || e.dataTransfer.getData('text/plain');
-    const sourceTeamId = e.dataTransfer.getData('sourceTeamId') as TeamId | undefined; 
+    const sourceTeamId = e.dataTransfer.getData('sourceTeamId') as TeamId | undefined;
 
     if (heroId) {
       if (sourceTeamId && sourceTeamId !== teamId) {
-        const success = moveHeroBetweenTeams(heroId, sourceTeamId, teamId);
-        if (!success) {
-          console.warn(`Failed to move hero ${heroId} from ${sourceTeamId} to ${teamId}.`);
-        }
-      } else if (!sourceTeamId) { // Dragged from hero pool
-        const success = addHeroToTeam(heroId, teamId);
-        if (!success) {
-          console.warn("Failed to add hero:", heroId, "to team:", teamId);
+        moveHeroBetweenTeams(heroId, sourceTeamId, teamId);
+      } else if (!sourceTeamId) {
+        if (!isHeroInAnyTeam(heroId)) {
+            addHeroToTeam(heroId, teamId);
+        } else {
+            console.warn(`Hero ${heroId} is already in a team (DND attempt).`);
         }
       }
     }
@@ -93,24 +96,50 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
   const handleClearTeam = () => {
     clearTeam(teamId);
   };
+  
+  const numSelectedHeroes = selectedHeroIdsForAssignment.size;
+  const isTeamFull = heroesInTeam.length >= MAX_HEROES_PER_TEAM;
 
-  const isVisuallyDragOver = isDragOverNative || (touchOverTeamId === teamId);
+  let addButtonText = 'Select Heroes to Add';
+  let isAddButtonDisabled = true;
+
+  if (numSelectedHeroes > 0) {
+    if (isTeamFull) {
+      addButtonText = `Team Full (${heroesInTeam.length}/${MAX_HEROES_PER_TEAM})`;
+      isAddButtonDisabled = true;
+    } else {
+      addButtonText = `Add ${numSelectedHeroes} Selected Heroes`;
+      isAddButtonDisabled = false;
+    }
+  } else {
+    isAddButtonDisabled = true; // No heroes selected
+  }
 
   const slotClasses = `
     bg-slate-800 p-4 rounded-lg shadow-xl flex-1 min-w-[280px] flex flex-col
     transition-all duration-150 ease-in-out
-    ${isVisuallyDragOver ? 'ring-2 ring-sky-500 scale-105 bg-slate-700' : 'ring-1 ring-slate-700'}
+    ${isDragOver ? 'ring-2 ring-sky-500 scale-105 bg-slate-700' : 'ring-1 ring-slate-700'}
   `;
 
   return (
-    <div 
+    <div
       className={slotClasses}
-      onDragOver={handleDragOverNative}
-      onDragLeave={handleDragLeaveNative}
-      onDrop={handleDropNative}
-      data-team-id={teamId} // For identification during touch drag
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <h3 className="text-xl font-bold text-sky-400 mb-1 border-b-2 border-slate-700 pb-2">{TEAM_NAMES[teamId]} ({heroesInTeam.length}/{MAX_HEROES_PER_TEAM})</h3>
+
+      <div className="my-3">
+        <button
+          onClick={() => onAssignSelectedHeroes(teamId)}
+          disabled={isAddButtonDisabled}
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          aria-label={`Add selected heroes to ${TEAM_NAMES[teamId]}`}
+        >
+          {addButtonText}
+        </button>
+      </div>
       
       <div className="my-2">
         <label htmlFor={`god-select-${teamId}`} className="block text-sm font-medium text-slate-300 mb-1">
@@ -142,7 +171,7 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
       <div className="flex-grow">
         {heroesInTeam.length === 0 && (
           <p className="text-slate-400 text-sm italic mb-3 h-full flex items-center justify-center">
-            Drag and drop heroes here.
+            Drag & drop heroes or use 'Add' button.
           </p>
         )}
         <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2 mb-3 min-h-[50px]">
@@ -153,7 +182,7 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ teamId }) => {
                 onRemove={() => removeHeroFromTeam(hero.id, teamId)}
                 showRemoveButton={true}
                 sourceTeamId={teamId}
-                activeTeamBuffs={activeTeamBuffs} 
+                activeTeamBuffs={activeTeamBuffs}
               />
             </div>
           ))}
