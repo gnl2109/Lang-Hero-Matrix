@@ -135,7 +135,7 @@ const HomePage: React.FC = () => {
   if (!isRosterSetupComplete) {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold text-center text-sky-400 mb-6">보유하고 있는 영웅을 선택하세요</h1>
+        <h1 className="text-3xl font-bold text-center text-sky-400 mb-6">랑그릿사 모바일 (극성의나라, 황혼의영역 컨텐츠용) 로스터 조합기</h1>
         <p className="text-center text-slate-300 mb-2">Click hero cards to mark as owned. You'll then build your teams.</p>
 
         <div className="mb-6 max-w-lg mx-auto">
