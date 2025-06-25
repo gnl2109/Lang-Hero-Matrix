@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; // Removed Link, Added useNavigate
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { decodeComposition } from '../utils/compositionEncoder';
 import { Hero, TeamComposition, TeamId, God, SharedPayload } from '../types'; 
@@ -18,7 +18,7 @@ const ViewCompositionPage: React.FC = () => {
     resetRosterAndTeams,
   } = useAppContext();
 
-  const navigate = useNavigate(); // Hook for navigation
+  const navigate = useNavigate();
 
   const [displayedPayload, setDisplayedPayload] = useState<SharedPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +29,10 @@ const ViewCompositionPage: React.FC = () => {
     if (encodedData) {
       const decoded = decodeComposition(encodedData);
       if (decoded && decoded.teamComposition) {
+        // We set shared data here primarily for consistency if other parts of the app
+        // were to react to it, though this page mainly displays it directly.
+        // For the purpose of "Create Your Own Team Plan", the critical part is
+        // that teamComposition is loaded into displayedPayload.
         setSharedData(decoded); 
         setDisplayedPayload(decoded); 
       } else {
@@ -39,7 +43,9 @@ const ViewCompositionPage: React.FC = () => {
       setError("No composition data found in URL.");
       setSharedData(null); 
     }
-  }, [encodedData, isLoadingHeroes, isLoadingGods, allHeroes, setSharedData, getGodById, getHeroById]);
+    // We don't want to re-run this if setSharedData changes due to this effect itself.
+    // The core dependencies are the loading states and the encodedData from URL.
+  }, [encodedData, isLoadingHeroes, isLoadingGods, allHeroes, getHeroById, getGodById]);
 
 
   if (isLoadingHeroes || isLoadingGods) {
@@ -47,11 +53,8 @@ const ViewCompositionPage: React.FC = () => {
   }
 
   const handleNavigateToPlanner = () => {
-    resetRosterAndTeams(); // Call the reset function from context
-    // Delay navigation to ensure state updates are processed
-    setTimeout(() => {
-      navigate('/'); // Programmatically navigate to the home page
-    }, 0);
+    resetRosterAndTeams(); // This will now also update rosterViewKey in context
+    navigate('/');         // Navigate immediately. HomePage will re-mount due to key change.
   };
 
   if (error) {
@@ -60,7 +63,7 @@ const ViewCompositionPage: React.FC = () => {
         <h1 className="text-3xl font-bold text-red-500 mb-4">Error</h1>
         <p className="text-slate-300 mb-6">{error}</p>
         <button 
-          onClick={handleNavigateToPlanner}
+          onClick={handleNavigateToPlanner} // Re-use the same handler logic
           className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg"
         >
           Go to Planner
@@ -70,7 +73,9 @@ const ViewCompositionPage: React.FC = () => {
   }
 
   if (!displayedPayload || !displayedPayload.teamComposition) {
-    return <div className="min-h-screen flex items-center justify-center text-xl text-sky-300">Loading composition...</div>;
+    // This state could be hit if decoding is slow or fails silently initially.
+    // Or if `encodedData` is present but `decodeComposition` returns null and `useEffect` hasn't set error yet.
+    return <div className="min-h-screen flex items-center justify-center text-xl text-sky-300">Loading composition details...</div>;
   }
 
   const { teamComposition } = displayedPayload;
@@ -82,7 +87,7 @@ const ViewCompositionPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {TEAM_IDS.map(teamId => {
           const teamData = teamComposition[teamId];
-          if (!teamData) return null;
+          if (!teamData) return null; // Should not happen if decodeComposition ensures all teamIds
 
           const heroIdsInTeam = teamData.heroes || [];
           const heroesToDisplay: Hero[] = heroIdsInTeam.map(id => getHeroById(id)).filter(Boolean) as Hero[];

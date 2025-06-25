@@ -67,6 +67,7 @@ export interface AppContextType {
   resetRosterAndTeams: () => void;
   editRoster: () => void; // Added function to re-enter roster setup
   isAppDragging: boolean;
+  rosterViewKey: number; // Key to force HomePage re-mount
 
   // Save/Load Compositions
   savedCompositions: SavedCompositionItem[];

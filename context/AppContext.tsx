@@ -18,6 +18,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [ownedHeroIds, setOwnedHeroIds] = useState(new Set(storedOwnedHeroIds));
 
   const [isRosterSetupComplete, setIsRosterSetupComplete] = useLocalStorage<boolean>(LOCAL_STORAGE_ROSTER_SETUP_COMPLETE_KEY, false);
+  const [rosterViewKey, setRosterViewKey] = useState(0); // Key for re-mounting HomePage
 
   const initialTeamComposition = TEAM_IDS.reduce((acc, teamId) => {
     acc[teamId] = { heroes: [], godId: null };
@@ -195,10 +196,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setOwnedHeroIds(new Set());
     setTeamComposition(initialTeamComposition);
     setIsRosterSetupComplete(false);
+    setRosterViewKey(prevKey => prevKey + 1); // Increment key to force HomePage re-mount
   }, [setIsRosterSetupComplete, initialTeamComposition]);
 
   const editRoster = useCallback(() => {
     setIsRosterSetupComplete(false); // Allows returning to roster setup view
+    // Optionally, increment rosterViewKey here as well if a full remount is desired when editing roster
+    // setRosterViewKey(prevKey => prevKey + 1); 
   }, [setIsRosterSetupComplete]);
 
   const saveCurrentComposition = useCallback((name: string) => {
@@ -222,6 +226,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setTeamComposition(itemToLoad.data.teamComposition);
       setOwnedHeroIds(new Set(itemToLoad.data.ownedHeroIds));
       setIsRosterSetupComplete(true); // Ensure app state reflects loaded roster
+      setRosterViewKey(prevKey => prevKey + 1); // Also remount to ensure clean state
     }
   }, [savedCompositions, setTeamComposition, setOwnedHeroIds, setIsRosterSetupComplete]);
 
@@ -252,7 +257,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isRosterSetupComplete,
     completeRosterSetup,
     resetRosterAndTeams,
-    editRoster, // Added to context
+    editRoster,
+    rosterViewKey, // Provide the key in context
     savedCompositions,
     saveCurrentComposition,
     loadComposition,
