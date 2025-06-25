@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; // Removed Link, Added useNavigate
 import { useAppContext } from '../context/AppContext';
 import { decodeComposition } from '../utils/compositionEncoder';
-import { Hero, TeamComposition, TeamId, God, SharedPayload } from '../types'; // Stage import removed
+import { Hero, TeamComposition, TeamId, God, SharedPayload } from '../types'; 
 import HeroCard from '../components/HeroCard';
 import { TEAM_IDS, TEAM_NAMES } from '../constants';
 
@@ -15,9 +15,10 @@ const ViewCompositionPage: React.FC = () => {
     setSharedData,
     isLoadingGods, 
     getGodById,
-    resetRosterAndTeams, // Added resetRosterAndTeams
-    // getStageById and allStages removed
+    resetRosterAndTeams,
   } = useAppContext();
+
+  const navigate = useNavigate(); // Hook for navigation
 
   const [displayedPayload, setDisplayedPayload] = useState<SharedPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +27,7 @@ const ViewCompositionPage: React.FC = () => {
     if (isLoadingHeroes || isLoadingGods) return; 
 
     if (encodedData) {
-      const decoded = decodeComposition(encodedData); // Returns SharedPayload | null
+      const decoded = decodeComposition(encodedData);
       if (decoded && decoded.teamComposition) {
         setSharedData(decoded); 
         setDisplayedPayload(decoded); 
@@ -38,7 +39,6 @@ const ViewCompositionPage: React.FC = () => {
       setError("No composition data found in URL.");
       setSharedData(null); 
     }
-  // allStages removed from dependencies
   }, [encodedData, isLoadingHeroes, isLoadingGods, allHeroes, setSharedData, getGodById, getHeroById]);
 
 
@@ -46,18 +46,22 @@ const ViewCompositionPage: React.FC = () => {
     return <div className="min-h-screen flex items-center justify-center text-xl text-sky-300">Loading data...</div>;
   }
 
+  const handleNavigateToPlanner = () => {
+    resetRosterAndTeams(); // Call the reset function from context
+    navigate('/'); // Programmatically navigate to the home page
+  };
+
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
         <h1 className="text-3xl font-bold text-red-500 mb-4">Error</h1>
         <p className="text-slate-300 mb-6">{error}</p>
-        <Link 
-          to="/" 
-          onClick={resetRosterAndTeams} // Call resetRosterAndTeams on click
+        <button 
+          onClick={handleNavigateToPlanner}
           className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg"
         >
           Go to Planner
-        </Link>
+        </button>
       </div>
     );
   }
@@ -66,13 +70,11 @@ const ViewCompositionPage: React.FC = () => {
     return <div className="min-h-screen flex items-center justify-center text-xl text-sky-300">Loading composition...</div>;
   }
 
-  // globalStageId and selectedGlobalStage removed
   const { teamComposition } = displayedPayload;
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-4xl font-bold text-center text-sky-400 mb-8">Shared Team Composition</h1>
-      {/* Stage display removed */}
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {TEAM_IDS.map(teamId => {
@@ -113,13 +115,12 @@ const ViewCompositionPage: React.FC = () => {
       </div>
 
       <div className="text-center mt-12">
-        <Link
-          to="/"
-          onClick={resetRosterAndTeams} // Call resetRosterAndTeams on click
+        <button
+          onClick={handleNavigateToPlanner}
           className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors duration-150"
         >
           Create Your Own Team Plan!
-        </Link>
+        </button>
       </div>
     </div>
   );
