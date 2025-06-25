@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Langrisser Hero Matrix</title>
+  <title>Langrisser Hero matrix</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -26,6 +26,10 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #555;
     }
+    /* Define custom text size for very small text elements like faction tags */
+    .text-xxs {
+      font-size: 0.625rem; /* 10px if base font size is 16px */
+    }
   </style>
 <script type="importmap">
 {
@@ -38,7 +42,6 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-slate-900 text-slate-100">
   <div id="root"></div>
