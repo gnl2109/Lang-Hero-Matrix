@@ -85,6 +85,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
 
   const rawFactions = [hero.faction1, hero.faction2, hero.faction3]
     .filter(Boolean)
+    .filter(f => f !== '-') // Exclude "-" from title
     .join(' / ');
   const cardTitle = `${hero.name}${rawFactions ? ` (${rawFactions})` : ''} ${isDisabled ? '[Assigned]' : ''} ${isCurrentlySelectedForAssignment ? '[Selected for Add]' : ''}`;
 
@@ -107,7 +108,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
 
       <div className="w-full flex flex-wrap gap-0.5 justify-center items-center mt-1 px-0.5">
         {[hero.faction1, hero.faction2, hero.faction3].map((faction, index) => {
-          if (!faction) return null;
+          if (!faction || faction === '-') return null; // Do not render if faction is falsy or "-"
 
           const isProvider = hero.factionBuffValue && hero.factionBuffValue === faction;
           const isBuffedByTeam = activeTeamBuffs && activeTeamBuffs.has(faction) && !isProvider;
@@ -128,7 +129,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
             </span>
           );
         })}
-        {![hero.faction1, hero.faction2, hero.faction3].some(Boolean) && (
+        {![hero.faction1, hero.faction2, hero.faction3].some(f => f && f !== '-') && ( // Check if any actual faction exists
             <div className="h-[17px] mt-1"></div> // Placeholder for consistent height if no factions
         )}
       </div>

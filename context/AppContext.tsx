@@ -195,9 +195,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setOwnedHeroIds(new Set());
     setTeamComposition(initialTeamComposition);
     setIsRosterSetupComplete(false);
-    // localStorage.removeItem(LOCAL_STORAGE_OWNED_HEROES_KEY); // useLocalStorage handles this
-    // localStorage.removeItem(LOCAL_STORAGE_ROSTER_SETUP_COMPLETE_KEY); // useLocalStorage handles this
   }, [setIsRosterSetupComplete, initialTeamComposition]);
+
+  const editRoster = useCallback(() => {
+    setIsRosterSetupComplete(false); // Allows returning to roster setup view
+  }, [setIsRosterSetupComplete]);
 
   const saveCurrentComposition = useCallback((name: string) => {
     const currentOwnedIds = Array.from(ownedHeroIds);
@@ -250,6 +252,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isRosterSetupComplete,
     completeRosterSetup,
     resetRosterAndTeams,
+    editRoster, // Added to context
     savedCompositions,
     saveCurrentComposition,
     loadComposition,

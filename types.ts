@@ -65,6 +65,7 @@ export interface AppContextType {
   isRosterSetupComplete: boolean;
   completeRosterSetup: () => void;
   resetRosterAndTeams: () => void;
+  editRoster: () => void; // Added function to re-enter roster setup
   isAppDragging: boolean;
 
   // Save/Load Compositions
