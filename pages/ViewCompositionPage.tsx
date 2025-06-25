@@ -15,6 +15,7 @@ const ViewCompositionPage: React.FC = () => {
     setSharedData,
     isLoadingGods, 
     getGodById,
+    resetRosterAndTeams, // Added resetRosterAndTeams
     // getStageById and allStages removed
   } = useAppContext();
 
@@ -50,7 +51,11 @@ const ViewCompositionPage: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
         <h1 className="text-3xl font-bold text-red-500 mb-4">Error</h1>
         <p className="text-slate-300 mb-6">{error}</p>
-        <Link to="/" className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">
+        <Link 
+          to="/" 
+          onClick={resetRosterAndTeams} // Call resetRosterAndTeams on click
+          className="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg"
+        >
           Go to Planner
         </Link>
       </div>
@@ -110,6 +115,7 @@ const ViewCompositionPage: React.FC = () => {
       <div className="text-center mt-12">
         <Link
           to="/"
+          onClick={resetRosterAndTeams} // Call resetRosterAndTeams on click
           className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors duration-150"
         >
           Create Your Own Team Plan!
