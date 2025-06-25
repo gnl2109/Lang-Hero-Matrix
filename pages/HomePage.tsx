@@ -242,7 +242,7 @@ const HomePage: React.FC = () => {
             aria-label="Filter by faction buff holders during roster setup"
           />
           <label htmlFor="roster-faction-buff-filter" className="ml-3 text-sm text-slate-300">
-            초절 보유 영웅만 보기 (Show Faction Buff Holders Only)
+            초절 보유 영웅만 보기
           </label>
         </div>
 
@@ -408,7 +408,7 @@ const HomePage: React.FC = () => {
                         aria-label="Filter by faction buff holders"
                     />
                     <label htmlFor="faction-buff-filter" className="text-sm text-slate-300">
-                        초절 보유 영웅만 보기 (Show Faction Buff Holders Only)
+                        초절 보유 영웅만 보기
                     </label>
                 </div>
             </div>
