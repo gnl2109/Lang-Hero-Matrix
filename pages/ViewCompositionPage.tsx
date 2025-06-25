@@ -48,7 +48,10 @@ const ViewCompositionPage: React.FC = () => {
 
   const handleNavigateToPlanner = () => {
     resetRosterAndTeams(); // Call the reset function from context
-    navigate('/'); // Programmatically navigate to the home page
+    // Delay navigation to ensure state updates are processed
+    setTimeout(() => {
+      navigate('/'); // Programmatically navigate to the home page
+    }, 0);
   };
 
   if (error) {
