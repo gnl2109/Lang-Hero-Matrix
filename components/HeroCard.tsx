@@ -45,6 +45,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
     p-1 w-full h-16
     flex flex-col items-center justify-start
     text-center
+    select-none /* Prevent text selection interfering with drag */
     ${isCurrentlySelectedForAssignment ? 'ring-2 ring-yellow-400 scale-105 shadow-yellow-500/50' : (isSelected ? 'ring-2 ring-sky-500' : 'ring-1 ring-slate-600')}
     ${cardIsEffectivelyDisabledForPoolInteraction ? 'opacity-50 cursor-not-allowed grayscale filter' : 'cursor-pointer'}
     ${(!cardIsEffectivelyDisabledForPoolInteraction && !showRemoveButton && !isAppDragging && !isCurrentlySelectedForAssignment) ? 'hover:shadow-lg hover:ring-sky-400' : ''}
