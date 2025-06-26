@@ -30,9 +30,9 @@ const HeroCard: React.FC<HeroCardProps> = ({
 }) => {
   const { 
     isAppDragging, 
-    setIsAppDragging, // Added
-    touchDragItem,    // Added
-    setTouchDragItem  // Added
+    setIsAppDragging, 
+    touchDragItem,    
+    setTouchDragItem  
   } = useAppContext();
 
   const cardIsEffectivelyDisabledForPoolInteraction = isDisabled && !showRemoveButton;
@@ -86,7 +86,10 @@ const HeroCard: React.FC<HeroCardProps> = ({
     if (!isDraggableForTouch) {
       return;
     }
-    // e.preventDefault(); // Might prevent click, be careful. Only preventDefault on target's touchMove.
+    // Prevent default browser touch actions (like scrolling or text selection)
+    // to allow custom drag logic to take full control. This is crucial for mobile D&D.
+    e.preventDefault(); 
+    
     setTouchDragItem({ heroId: hero.id, sourceTeamId });
     setIsAppDragging(true); // Manually set for touch
   };
