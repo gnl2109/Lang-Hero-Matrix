@@ -7,8 +7,8 @@ import { TEAM_NAMES } from '../constants';
 
 interface BattleTeamSlotProps {
   teamId: TeamId;
-  selectedHeroIdsForAssignment: ReadonlySet<string>; // Changed: IDs of heroes selected in pool
-  onAssignSelectedHeroes: (teamId: TeamId) => void; // Changed: Handler to add selected heroes
+  selectedHeroIdsForAssignment: ReadonlySet<string>; 
+  onAssignSelectedHeroes: (teamId: TeamId) => void; 
 }
 
 const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({ 
@@ -28,6 +28,12 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({
     isLoadingGods,
     clearTeam,
     isHeroInAnyTeam,
+    // Touch D&D context
+    touchDragItem,
+    setTouchDragItem,
+    touchDropTargetTeamId,
+    setTouchDropTargetTeamId,
+    setIsAppDragging, // To set false after touch drop
   } = useAppContext();
 
   const currentTeamData = teamComposition[teamId];
@@ -39,7 +45,7 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({
   const selectedGodId = currentTeamData.godId;
   const selectedGod = selectedGodId ? getGodById(selectedGodId) : null;
 
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [isMouseDragOver, setIsMouseDragOver] = useState(false); // Renamed for clarity
   const MAX_HEROES_PER_TEAM = 8;
   const isTeamEmpty = heroesInTeam.length === 0 && !selectedGodId;
 
@@ -53,25 +59,23 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({
     return buffs;
   }, [heroesInTeam]);
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  // Mouse Drag Handlers
+  const handleMouseDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (e.dataTransfer.types.includes('heroid') || e.dataTransfer.types.includes('text/plain')) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      setIsDragOver(true);
-    } else {
-      if (isDragOver) {
-        setIsDragOver(false);
-      }
+      setIsMouseDragOver(true);
     }
   };
 
-  const handleDragLeave = () => {
-    setIsDragOver(false);
+  const handleMouseDragLeave = () => {
+    setIsMouseDragOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleMouseDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setIsDragOver(false);
+    setIsMouseDragOver(false);
+    // setIsAppDragging(false) is handled by global 'dragend' listener
     const heroId = e.dataTransfer.getData('heroId') || e.dataTransfer.getData('text/plain');
     const sourceTeamId = e.dataTransfer.getData('sourceTeamId') as TeamId | undefined;
 
@@ -87,6 +91,39 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({
       }
     }
   };
+
+  // Touch Drag Handlers
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchDragItem) {
+      e.preventDefault(); // Allow drop and prevent scrolling over this element
+      setTouchDropTargetTeamId(teamId);
+    }
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchDragItem && touchDropTargetTeamId === teamId) {
+      e.preventDefault(); // Ensure this event is handled here
+      const { heroId, sourceTeamId } = touchDragItem;
+      let success = false;
+      if (heroId) {
+        if (sourceTeamId && sourceTeamId !== teamId) {
+          success = moveHeroBetweenTeams(heroId, sourceTeamId, teamId);
+        } else if (!sourceTeamId) {
+          if (!isHeroInAnyTeam(heroId)) {
+            success = addHeroToTeam(heroId, teamId);
+          } else {
+            console.warn(`Hero ${heroId} is already in a team (Touch DND attempt).`);
+          }
+        }
+      }
+      // Reset drag state - Global touchend will also fire, but this handles successful drop cleanup immediately.
+      setTouchDragItem(null);
+      setTouchDropTargetTeamId(null); 
+      setIsAppDragging(false); // Crucial for touch
+    }
+    // If drop was not intended for this specific slot (e.g. touchDropTargetTeamId was different), global touchend handles reset.
+  };
+
 
   const handleGodSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const godId = e.target.value;
@@ -112,21 +149,25 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({
       isAddButtonDisabled = false;
     }
   } else {
-    isAddButtonDisabled = true; // No heroes selected
+    isAddButtonDisabled = true; 
   }
+
+  const isHighlightedForDrop = isMouseDragOver || (touchDragItem && touchDropTargetTeamId === teamId);
 
   const slotClasses = `
     bg-slate-800 p-4 rounded-lg shadow-xl flex-1 min-w-[280px] flex flex-col
     transition-all duration-150 ease-in-out
-    ${isDragOver ? 'ring-2 ring-sky-500 scale-105 bg-slate-700' : 'ring-1 ring-slate-700'}
+    ${isHighlightedForDrop ? 'ring-2 ring-sky-500 scale-105 bg-slate-700' : 'ring-1 ring-slate-700'}
   `;
 
   return (
     <div
       className={slotClasses}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onDragOver={handleMouseDragOver}
+      onDragLeave={handleMouseDragLeave}
+      onDrop={handleMouseDrop}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <h3 className="text-xl font-bold text-sky-400 mb-1 border-b-2 border-slate-700 pb-2">{TEAM_NAMES[teamId]} ({heroesInTeam.length}/{MAX_HEROES_PER_TEAM})</h3>
 

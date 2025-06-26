@@ -12,6 +12,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isLoadingHeroes, setIsLoadingHeroes] = useState(true);
   const [allGods, setAllGods] = useState<God[]>([]);
   const [isLoadingGods, setIsLoadingGods] = useState(true);
+  
+  // App dragging state for both mouse and touch
   const [isAppDragging, setIsAppDragging] = useState(false);
 
   const [storedOwnedHeroIds, setStoredOwnedHeroIds] = useLocalStorage<string[]>(LOCAL_STORAGE_OWNED_HEROES_KEY, []);
@@ -27,8 +29,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [teamComposition, setTeamComposition] = useState<TeamComposition>(initialTeamComposition);
   const MAX_HEROES_PER_TEAM = 8;
 
-  // Saved Compositions
   const [savedCompositions, setSavedCompositions] = useLocalStorage<SavedCompositionItem[]>(LOCAL_STORAGE_SAVED_COMPOSITIONS_KEY, []);
+
+  // Touch Drag and Drop State
+  const [touchDragItem, setTouchDragItem] = useState<{ heroId: string; sourceTeamId?: TeamId } | null>(null);
+  const [touchDropTargetTeamId, setTouchDropTargetTeamId] = useState<TeamId | null>(null);
 
   useEffect(() => {
     const loadAppData = async () => {
@@ -54,20 +59,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setStoredOwnedHeroIds(Array.from(ownedHeroIds));
   }, [ownedHeroIds, setStoredOwnedHeroIds]);
 
+  // Global drag listeners for mouse
   useEffect(() => {
     const handleGlobalDragStart = () => setIsAppDragging(true);
-    const handleGlobalDragEnd = () => setIsAppDragging(false);
+    const handleGlobalDragEnd = () => setIsAppDragging(false); // Handles drop, cancel
 
     document.addEventListener('dragstart', handleGlobalDragStart);
     document.addEventListener('dragend', handleGlobalDragEnd);
-    document.addEventListener('drop', handleGlobalDragEnd);
-
+    
     return () => {
       document.removeEventListener('dragstart', handleGlobalDragStart);
       document.removeEventListener('dragend', handleGlobalDragEnd);
-      document.removeEventListener('drop', handleGlobalDragEnd);
     };
   }, []);
+
+  // Global touch listeners for drag cancellation
+  useEffect(() => {
+    const handleGlobalTouchEndOrCancel = () => {
+      if (touchDragItem) { // If a touch drag was active
+        setTouchDragItem(null);
+        setTouchDropTargetTeamId(null);
+        setIsAppDragging(false);
+      }
+    };
+
+    document.addEventListener('touchend', handleGlobalTouchEndOrCancel);
+    document.addEventListener('touchcancel', handleGlobalTouchEndOrCancel);
+
+    return () => {
+      document.removeEventListener('touchend', handleGlobalTouchEndOrCancel);
+      document.removeEventListener('touchcancel', handleGlobalTouchEndOrCancel);
+    };
+  }, [touchDragItem]); // Depend on touchDragItem to add/remove listener based on its state if needed, though typically it's always on
 
   const toggleOwnedHero = useCallback((heroId: string) => {
     setOwnedHeroIds(prev => {
@@ -196,19 +219,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setOwnedHeroIds(new Set());
     setTeamComposition(initialTeamComposition);
     setIsRosterSetupComplete(false);
-    setRosterViewKey(prevKey => prevKey + 1); // Increment key to force HomePage re-mount
+    setRosterViewKey(prevKey => prevKey + 1); 
   }, [setIsRosterSetupComplete, initialTeamComposition]);
 
   const editRoster = useCallback(() => {
-    setIsRosterSetupComplete(false); // Allows returning to roster setup view
-    // Optionally, increment rosterViewKey here as well if a full remount is desired when editing roster
-    // setRosterViewKey(prevKey => prevKey + 1); 
+    setIsRosterSetupComplete(false);
   }, [setIsRosterSetupComplete]);
 
   const saveCurrentComposition = useCallback((name: string) => {
     const currentOwnedIds = Array.from(ownedHeroIds);
     const compositionToSave: SavedCompositionState = {
-      teamComposition: JSON.parse(JSON.stringify(teamComposition)), // Deep copy
+      teamComposition: JSON.parse(JSON.stringify(teamComposition)), 
       ownedHeroIds: currentOwnedIds,
     };
     const newSavedItem: SavedCompositionItem = {
@@ -225,8 +246,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (itemToLoad) {
       setTeamComposition(itemToLoad.data.teamComposition);
       setOwnedHeroIds(new Set(itemToLoad.data.ownedHeroIds));
-      setIsRosterSetupComplete(true); // Ensure app state reflects loaded roster
-      setRosterViewKey(prevKey => prevKey + 1); // Also remount to ensure clean state
+      setIsRosterSetupComplete(true); 
+      setRosterViewKey(prevKey => prevKey + 1); 
     }
   }, [savedCompositions, setTeamComposition, setOwnedHeroIds, setIsRosterSetupComplete]);
 
@@ -241,6 +262,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     allGods,
     isLoadingGods,
     isAppDragging,
+    setIsAppDragging, // Provide setter
     ownedHeroIds,
     toggleOwnedHero,
     clearOwnedHeroSelections,
@@ -258,11 +280,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     completeRosterSetup,
     resetRosterAndTeams,
     editRoster,
-    rosterViewKey, // Provide the key in context
+    rosterViewKey,
     savedCompositions,
     saveCurrentComposition,
     loadComposition,
     deleteSavedComposition,
+    // Touch D&D
+    touchDragItem,
+    setTouchDragItem,
+    touchDropTargetTeamId,
+    setTouchDropTargetTeamId,
   };
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;

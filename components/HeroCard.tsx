@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Hero, TeamId } from '../types';
-import { useAppContext } from '../context/AppContext'; // Corrected import
+import { useAppContext } from '../context/AppContext';
 
 interface HeroCardProps {
   hero: Hero;
@@ -18,22 +18,26 @@ interface HeroCardProps {
 
 const HeroCard: React.FC<HeroCardProps> = ({
   hero,
-  isSelected, // For roster setup selection
-  isDisabled, // Generally means hero is in a team when shown in the pool
+  isSelected, 
+  isDisabled, 
   onClick,
   onRemove,
   showRemoveButton,
   sourceTeamId,
   activeTeamBuffs,
-  isCurrentlySelectedForAssignment, // For pool hero multi-selection
+  isCurrentlySelectedForAssignment,
   onSelectForAssignment,
 }) => {
-  const { isAppDragging } = useAppContext();
+  const { 
+    isAppDragging, 
+    setIsAppDragging, // Added
+    touchDragItem,    // Added
+    setTouchDragItem  // Added
+  } = useAppContext();
 
-  // In the pool, isDisabled means the hero is in a team.
-  // In roster setup, isDisabled might not be used, isSelected is primary.
   const cardIsEffectivelyDisabledForPoolInteraction = isDisabled && !showRemoveButton;
 
+  const isBeingTouchDragged = touchDragItem?.heroId === hero.id;
 
   const cardClasses = `
     relative
@@ -45,49 +49,54 @@ const HeroCard: React.FC<HeroCardProps> = ({
     ${cardIsEffectivelyDisabledForPoolInteraction ? 'opacity-50 cursor-not-allowed grayscale filter' : 'cursor-pointer'}
     ${(!cardIsEffectivelyDisabledForPoolInteraction && !showRemoveButton && !isAppDragging && !isCurrentlySelectedForAssignment) ? 'hover:shadow-lg hover:ring-sky-400' : ''}
     ${(showRemoveButton) ? 'cursor-grab' : ''}
+    ${isBeingTouchDragged ? 'opacity-75 scale-95 shadow-2xl ring-2 ring-sky-300 z-10' : ''}
   `;
 
   const handleClick = () => {
-    // For pool selection: onSelectForAssignment should be callable even if isDisabled (meaning hero is in a team),
-    // as the selection logic in HomePage will prevent selection of already assigned heroes.
-    // The visual "isDisabled" state (opacity/grayscale) is for indication.
     if (onSelectForAssignment) {
       onSelectForAssignment(hero.id);
-    } else if (onClick && !cardIsEffectivelyDisabledForPoolInteraction) { // Roster setup click
+    } else if (onClick && !cardIsEffectivelyDisabledForPoolInteraction) {
       onClick();
     }
   };
 
-  // A hero is draggable if:
-  // 1. It's in a team (showRemoveButton is true) 
-  // OR it's in the pool and not disabled (i.e., not in another team)
-  // 2. AND It's NOT currently part of the multi-selection group for assignment.
-  const isDraggable = (showRemoveButton || !isDisabled) && !isCurrentlySelectedForAssignment;
+  const isDraggableForMouse = (showRemoveButton || !isDisabled) && !isCurrentlySelectedForAssignment;
+  const isDraggableForTouch = (showRemoveButton || !isDisabled) && !isCurrentlySelectedForAssignment;
 
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    if (!isDraggable) {
+    if (!isDraggableForMouse) {
         e.preventDefault();
         return;
     }
+    // setIsAppDragging(true) is handled by global 'dragstart' listener
     e.dataTransfer.setData('heroId', hero.id);
     e.dataTransfer.effectAllowed = 'move';
     if (showRemoveButton && sourceTeamId) {
       e.dataTransfer.setData('sourceTeamId', sourceTeamId);
     }
     try {
-        e.dataTransfer.setData('text/plain', hero.id); // For Firefox compatibility
-        // Ensure custom type is 'heroid' if consistently used, or just text/plain + heroId
+        e.dataTransfer.setData('text/plain', hero.id); 
     } catch (err) {
         console.warn("Error setting multiple dataTransfer types:", err);
     }
   };
+  
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDraggableForTouch) {
+      return;
+    }
+    // e.preventDefault(); // Might prevent click, be careful. Only preventDefault on target's touchMove.
+    setTouchDragItem({ heroId: hero.id, sourceTeamId });
+    setIsAppDragging(true); // Manually set for touch
+  };
+
 
   const rawFactions = [hero.faction1, hero.faction2, hero.faction3]
     .filter(Boolean)
-    .filter(f => f !== '-') // Exclude "-" from title
+    .filter(f => f !== '-') 
     .join(' / ');
-  const cardTitle = `${hero.name}${rawFactions ? ` (${rawFactions})` : ''} ${isDisabled ? '[Assigned]' : ''} ${isCurrentlySelectedForAssignment ? '[Selected for Add]' : ''}`;
+  const cardTitle = `${hero.name}${rawFactions ? ` (${rawFactions})` : ''} ${isDisabled ? '[Assigned]' : ''} ${isCurrentlySelectedForAssignment ? '[Selected for Add]' : ''} ${isBeingTouchDragged ? '[Dragging]' : ''}`;
 
 
   return (
@@ -99,8 +108,9 @@ const HeroCard: React.FC<HeroCardProps> = ({
       tabIndex={cardIsEffectivelyDisabledForPoolInteraction && !onSelectForAssignment ? -1 : 0}
       aria-pressed={isSelected || isCurrentlySelectedForAssignment}
       aria-disabled={cardIsEffectivelyDisabledForPoolInteraction}
-      draggable={isDraggable}
+      draggable={isDraggableForMouse}
       onDragStart={handleDragStart}
+      onTouchStart={handleTouchStart} // Added touch handler
     >
       <div className="w-full">
         <p className="font-semibold text-xs text-sky-300 truncate w-full px-1">{hero.name}</p>
@@ -108,7 +118,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
 
       <div className="w-full flex flex-wrap gap-0.5 justify-center items-center mt-1 px-0.5">
         {[hero.faction1, hero.faction2, hero.faction3].map((faction, index) => {
-          if (!faction || faction === '-') return null; // Do not render if faction is falsy or "-"
+          if (!faction || faction === '-') return null; 
 
           const isProvider = hero.factionBuffValue && hero.factionBuffValue === faction;
           const isBuffedByTeam = activeTeamBuffs && activeTeamBuffs.has(faction) && !isProvider;
@@ -129,15 +139,15 @@ const HeroCard: React.FC<HeroCardProps> = ({
             </span>
           );
         })}
-        {![hero.faction1, hero.faction2, hero.faction3].some(f => f && f !== '-') && ( // Check if any actual faction exists
-            <div className="h-[17px] mt-1"></div> // Placeholder for consistent height if no factions
+        {![hero.faction1, hero.faction2, hero.faction3].some(f => f && f !== '-') && ( 
+            <div className="h-[17px] mt-1"></div>
         )}
       </div>
 
       {showRemoveButton && onRemove && (
         <button
           onClick={(e) => {
-            e.stopPropagation(); // Prevent card click event
+            e.stopPropagation(); 
             onRemove();
           }}
           className="absolute top-0.5 right-0.5 bg-red-500 hover:bg-red-700 text-white text-xxs font-bold p-0.5 rounded-full w-4 h-4 flex items-center justify-center"

@@ -67,6 +67,7 @@ export interface AppContextType {
   resetRosterAndTeams: () => void;
   editRoster: () => void; // Added function to re-enter roster setup
   isAppDragging: boolean;
+  setIsAppDragging: (isDragging: boolean) => void; // Added for explicit control
   rosterViewKey: number; // Key to force HomePage re-mount
 
   // Save/Load Compositions
@@ -74,4 +75,10 @@ export interface AppContextType {
   saveCurrentComposition: (name: string) => void;
   loadComposition: (compositionId: string) => void;
   deleteSavedComposition: (compositionId: string) => void;
+
+  // Touch Drag and Drop State
+  touchDragItem: { heroId: string; sourceTeamId?: TeamId } | null;
+  setTouchDragItem: (item: { heroId: string; sourceTeamId?: TeamId } | null) => void;
+  touchDropTargetTeamId: TeamId | null;
+  setTouchDropTargetTeamId: (teamId: TeamId | null) => void;
 }
