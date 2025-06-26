@@ -30,9 +30,9 @@ const HeroCard: React.FC<HeroCardProps> = ({
 }) => {
   const { 
     isAppDragging, 
-    setIsAppDragging, // Added
-    touchDragItem,    // Added
-    setTouchDragItem  // Added
+    setIsAppDragging, 
+    touchDragItem,    
+    setTouchDragItem  
   } = useAppContext();
 
   const cardIsEffectivelyDisabledForPoolInteraction = isDisabled && !showRemoveButton;
@@ -49,7 +49,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
     ${cardIsEffectivelyDisabledForPoolInteraction ? 'opacity-50 cursor-not-allowed grayscale filter' : 'cursor-pointer'}
     ${(!cardIsEffectivelyDisabledForPoolInteraction && !showRemoveButton && !isAppDragging && !isCurrentlySelectedForAssignment) ? 'hover:shadow-lg hover:ring-sky-400' : ''}
     ${(showRemoveButton) ? 'cursor-grab' : ''}
-    ${isBeingTouchDragged ? 'opacity-75 scale-95 shadow-2xl ring-2 ring-sky-300 z-10' : ''}
+    ${isBeingTouchDragged ? 'opacity-75 shadow-2xl ring-2 ring-sky-300 z-10 pointer-events-none' : ''}
   `;
 
   const handleClick = () => {
@@ -110,7 +110,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
       aria-disabled={cardIsEffectivelyDisabledForPoolInteraction}
       draggable={isDraggableForMouse}
       onDragStart={handleDragStart}
-      onTouchStart={handleTouchStart} // Added touch handler
+      onTouchStart={handleTouchStart} 
     >
       <div className="w-full">
         <p className="font-semibold text-xs text-sky-300 truncate w-full px-1">{hero.name}</p>
