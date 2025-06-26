@@ -49,7 +49,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
     ${cardIsEffectivelyDisabledForPoolInteraction ? 'opacity-50 cursor-not-allowed grayscale filter' : 'cursor-pointer'}
     ${(!cardIsEffectivelyDisabledForPoolInteraction && !showRemoveButton && !isAppDragging && !isCurrentlySelectedForAssignment) ? 'hover:shadow-lg hover:ring-sky-400' : ''}
     ${(showRemoveButton) ? 'cursor-grab' : ''}
-    ${isBeingTouchDragged ? 'opacity-75 shadow-2xl ring-2 ring-sky-300 z-10 pointer-events-none' : ''}
+    ${isBeingTouchDragged ? 'opacity-75 scale-95 shadow-2xl ring-2 ring-sky-300 z-10 pointer-events-none' : ''}
   `;
 
   const handleClick = () => {
