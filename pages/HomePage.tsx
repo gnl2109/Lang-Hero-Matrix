@@ -199,7 +199,7 @@ const HomePage: React.FC = () => {
   if (!isRosterSetupComplete) {
     return (
       <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold text-center text-sky-400 mb-6">랑그릿사 모바일 (극성의나라, 황혼의영역 컨텐츠용) 로스터 조합기</h1>
+        <h1 className="text-3xl font-bold text-center text-sky-400 mb-6">랑그릿사 모바일 (극성의나라, 황혼의영역 컨텐츠용) 영웅 진영 조합기</h1>
         <p className="text-center text-slate-300 mb-2">Click hero cards to mark as owned. You'll then build your teams.</p>
 
         <div className="mb-6 max-w-lg mx-auto">
@@ -326,7 +326,7 @@ const HomePage: React.FC = () => {
       </div>
 
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-sky-300 mb-4">Battle Teams</h2>
+        <h2 className="text-2xl font-semibold text-sky-300 mb-4">영웅 조합</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {TEAM_IDS.map(teamId => (
             <BattleTeamSlot
@@ -342,7 +342,7 @@ const HomePage: React.FC = () => {
       {/* Hero Pool Section */}
       <div className="bg-slate-800 p-4 rounded-lg shadow-lg">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
-            <h2 className="text-2xl font-semibold text-sky-300">My Hero Pool</h2>
+            <h2 className="text-2xl font-semibold text-sky-300">나의 보유 영웅</h2>
             {selectedHeroIdsForAssignment.size > 0 && (
                 <button 
                     onClick={clearCurrentlySelectedHeroesForAssignment} 

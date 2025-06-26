@@ -145,7 +145,7 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({
       addButtonText = `Team Full (${heroesInTeam.length}/${MAX_HEROES_PER_TEAM})`;
       isAddButtonDisabled = true;
     } else {
-      addButtonText = `Add ${numSelectedHeroes} Selected Heroes`;
+      addButtonText = `Add ${numSelectedHeroes} Selected`;
       isAddButtonDisabled = false;
     }
   } else {
@@ -171,43 +171,47 @@ const BattleTeamSlot: React.FC<BattleTeamSlotProps> = ({
     >
       <h3 className="text-xl font-bold text-sky-400 mb-1 border-b-2 border-slate-700 pb-2">{TEAM_NAMES[teamId]} ({heroesInTeam.length}/{MAX_HEROES_PER_TEAM})</h3>
 
-      <div className="my-3">
-        <button
-          onClick={() => onAssignSelectedHeroes(teamId)}
-          disabled={isAddButtonDisabled}
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-          aria-label={`Add selected heroes to ${TEAM_NAMES[teamId]}`}
-        >
-          {addButtonText}
-        </button>
+      {/* Combined Button and God Select Row */}
+      <div className="flex flex-row items-center gap-x-3 my-3">
+        <div className="flex-shrink-0">
+          <button
+            onClick={() => onAssignSelectedHeroes(teamId)}
+            disabled={isAddButtonDisabled}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-2.5 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed text-xs whitespace-nowrap"
+            aria-label={`Add selected heroes to ${TEAM_NAMES[teamId]}`}
+          >
+            {addButtonText}
+          </button>
+        </div>
+        
+        <div className="flex-grow min-w-0">
+          <label htmlFor={`god-select-${teamId}`} className="sr-only">
+            Select God:
+          </label>
+          {isLoadingGods ? (
+              <p className="text-xs text-slate-400 py-1.5">Loading Gods...</p>
+          ) : (
+          <select
+            id={`god-select-${teamId}`}
+            value={selectedGodId || ""}
+            onChange={handleGodSelection}
+            className="w-full bg-slate-700 text-slate-100 border border-slate-600 rounded py-1.5 px-2 text-xs focus:ring-sky-500 focus:border-sky-500"
+            aria-label={`Select God for ${TEAM_NAMES[teamId]}`}
+          >
+            <option value="">-- Select God --</option>
+            {allGods.map(god => (
+              <option key={god.id} value={god.id}>
+                {god.name}
+              </option>
+            ))}
+          </select>
+          )}
+        </div>
       </div>
       
-      <div className="my-2">
-        <label htmlFor={`god-select-${teamId}`} className="block text-sm font-medium text-slate-300 mb-1">
-          Select God:
-        </label>
-        {isLoadingGods ? (
-            <p className="text-xs text-slate-400">Loading Gods...</p>
-        ) : (
-        <select
-          id={`god-select-${teamId}`}
-          value={selectedGodId || ""}
-          onChange={handleGodSelection}
-          className="w-full bg-slate-700 text-slate-100 border border-slate-600 rounded p-2 text-sm focus:ring-sky-500 focus:border-sky-500"
-          aria-label={`Select God for ${TEAM_NAMES[teamId]}`}
-        >
-          <option value="">-- None --</option>
-          {allGods.map(god => (
-            <option key={god.id} value={god.id}>
-              {god.name}
-            </option>
-          ))}
-        </select>
-        )}
-        {selectedGod && (
-          <p className="text-xs text-amber-300 mt-1">Chosen God: {selectedGod.name}</p>
-        )}
-      </div>
+      {selectedGod && (
+        <p className="text-xxs text-amber-300 mb-2 -mt-1">Chosen God: {selectedGod.name}</p>
+      )}
 
       <div className="flex-grow">
         {heroesInTeam.length === 0 && (

@@ -10,8 +10,8 @@ export const LOCAL_STORAGE_SAVED_COMPOSITIONS_KEY = 'polarisPlanner_savedComposi
 export const TEAM_IDS: TeamId[] = [TeamId.Team1, TeamId.Team2, TeamId.Team3, TeamId.Team4];
 
 export const TEAM_NAMES: Record<TeamId, string> = {
-  [TeamId.Team1]: "Battle Team 1",
-  [TeamId.Team2]: "Battle Team 2",
-  [TeamId.Team3]: "Battle Team 3",
-  [TeamId.Team4]: "Battle Team 4",
+  [TeamId.Team1]: "진영 1",
+  [TeamId.Team2]: "진영 2",
+  [TeamId.Team3]: "진영 3",
+  [TeamId.Team4]: "진영 4",
 };
