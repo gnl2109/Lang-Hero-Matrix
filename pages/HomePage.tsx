@@ -355,63 +355,69 @@ const HomePage: React.FC = () => {
 
         {/* Filter Options Panel */}
         <div className="bg-slate-700 p-3 rounded-md mb-4 shadow">
+          <div className="flex flex-col lg:flex-row lg:gap-x-6"> {/* Horizontal on large screens, vertical on smaller */}
+            
             {/* Name Filter Section */}
-            <div className="mb-4">
-                <label htmlFor="hero-name-filter" className="block text-sm font-medium text-slate-300 mb-1">Filter by Name:</label>
-                <input
-                    id="hero-name-filter"
-                    type="text"
-                    placeholder="Enter hero name..."
-                    value={filterText}
-                    onChange={(e) => setFilterText(e.target.value)}
-                    className="w-full bg-slate-600 text-slate-100 border border-slate-500 rounded p-2 focus:ring-sky-500 focus:border-sky-500"
-                    aria-label="Filter owned heroes by name"
-                />
+            <div className="mb-4 lg:mb-0 lg:w-72"> {/* Fixed width on large screens, full width on smaller. Margin bottom for smaller screens */}
+              <label htmlFor="hero-name-filter" className="block text-sm font-medium text-slate-300 mb-1">Filter by Name:</label>
+              <input
+                id="hero-name-filter"
+                type="text"
+                placeholder="Enter hero name..."
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                className="w-full bg-slate-600 text-slate-100 border border-slate-500 rounded p-2 focus:ring-sky-500 focus:border-sky-500"
+                aria-label="Filter owned heroes by name"
+              />
             </div>
 
-            {/* Faction Filters Section */}
-            <div className="mb-3">
+            {/* Faction and Buff Filters Column */}
+            <div className="flex-grow"> {/* Takes remaining space on large screens */}
+              {/* Faction Filters Section */}
+              <div className="mb-3">
                 <p className="text-sm font-medium text-slate-300 mb-1">Filter by Faction:</p>
                 <div className="flex flex-wrap gap-2 mb-2">
-                    {uniqueFactions.map(faction => (
-                        <button
-                            key={`pool-faction-${faction}`}
-                            onClick={() => toggleFactionFilter(faction)}
-                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors duration-150
-                                ${selectedFactionFilters.has(faction) ? 'bg-sky-500 text-white hover:bg-sky-400' : 'bg-slate-600 text-slate-200 hover:bg-slate-500'}
-                            `}
-                            aria-pressed={selectedFactionFilters.has(faction)}
-                        >
-                            {faction}
-                        </button>
-                    ))}
+                  {uniqueFactions.map(faction => (
+                    <button
+                      key={`pool-faction-${faction}`}
+                      onClick={() => toggleFactionFilter(faction)}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors duration-150
+                        ${selectedFactionFilters.has(faction) ? 'bg-sky-500 text-white hover:bg-sky-400' : 'bg-slate-600 text-slate-200 hover:bg-slate-500'}
+                      `}
+                      aria-pressed={selectedFactionFilters.has(faction)}
+                    >
+                      {faction}
+                    </button>
+                  ))}
                 </div>
                 {selectedFactionFilters.size > 0 && (
-                    <button
-                        onClick={clearAllFactionFilters}
-                        className="text-xs text-amber-400 hover:text-amber-300 underline"
-                    >
-                        Clear Faction Filters
-                    </button>
+                  <button
+                    onClick={clearAllFactionFilters}
+                    className="text-xs text-amber-400 hover:text-amber-300 underline"
+                  >
+                    Clear Faction Filters
+                  </button>
                 )}
-            </div>
-            
-            {/* Faction Buff Filter Section */}
-            <div>
+              </div>
+              
+              {/* Faction Buff Filter Section */}
+              <div> {/* No margin bottom needed if it's the last item in this column */}
                 <div className="flex items-center space-x-3">
-                    <input
-                        type="checkbox"
-                        id="faction-buff-filter"
-                        checked={showOnlyFactionBuffHolders}
-                        onChange={(e) => setShowOnlyFactionBuffHolders(e.target.checked)}
-                        className="h-5 w-5 rounded border-slate-500 bg-slate-600 text-sky-600 focus:ring-sky-500"
-                        aria-label="Filter by faction buff holders"
-                    />
-                    <label htmlFor="faction-buff-filter" className="text-sm text-slate-300">
-                        초절 보유 영웅만 보기
-                    </label>
+                  <input
+                    type="checkbox"
+                    id="faction-buff-filter"
+                    checked={showOnlyFactionBuffHolders}
+                    onChange={(e) => setShowOnlyFactionBuffHolders(e.target.checked)}
+                    className="h-5 w-5 rounded border-slate-500 bg-slate-600 text-sky-600 focus:ring-sky-500"
+                    aria-label="Filter by faction buff holders"
+                  />
+                  <label htmlFor="faction-buff-filter" className="text-sm text-slate-300">
+                    초절 보유 영웅만 보기
+                  </label>
                 </div>
+              </div>
             </div>
+          </div>
         </div>
 
 
